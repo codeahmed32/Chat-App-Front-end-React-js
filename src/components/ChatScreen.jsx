@@ -29,20 +29,36 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
     socket.on('message', (incomingMessage) => {
       if (!incomingMessage) return;
-      // Ensuring we don't duplicate messages sent by ourselves
-      if (incomingMessage.sender !== userName) {
+      
+      // FIX: Check mapped payload variables (senderName instead of sender)
+      if (incomingMessage.senderName !== userName) {
         setMessages((prev) => [...prev, {
           id: incomingMessage.id || Date.now(),
-          sender: incomingMessage.sender,
-          text: incomingMessage.text,
-          time: incomingMessage.time || incomingMessage.timestamp, // Fallback support
+          sender: incomingMessage.senderName, // Map backend 'senderName'
+          text: incomingMessage.message,       // Map backend 'message'
+          time: incomingMessage.time || incomingMessage.timeStamp, 
           isMe: false
         }]);
       }
     });
 
+    // Handle historic chat load upon validation parameters
+    socket.on('chat_history', (history) => {
+      if (Array.isArray(history)) {
+        const mappedHistory = history.map((msg) => ({
+          id: msg._id || Math.random(),
+          sender: msg.senderName,
+          text: msg.message,
+          time: msg.timeStamp ? new Date(msg.timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+          isMe: msg.senderName === userName
+        }));
+        setMessages(mappedHistory);
+      }
+    });
+
     return () => {
       socket.off('message');
+      socket.off('chat_history');
     };
   }, [socket, userName]);
 
@@ -52,12 +68,11 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
     const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    // FIX: Match exact payload requested by back-end endpoints
     const messagePayload = {
       room: roomId,
-      sender: userName,
-      text: inputText.trim(),
-      time: timeString,
-      timestamp: timeString // Keeping structural parity with payload configurations
+      senderName: userName, // Changed from sender to senderName
+      message: inputText.trim() // Changed from text to message
     };
 
     // 1. Emit to socket backend
