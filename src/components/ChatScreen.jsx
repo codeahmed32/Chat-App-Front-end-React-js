@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Plus, Smile, Send, Search, Video, Phone, Info, Hash, MessagesSquare, Users, 
-  ChevronRight, ArrowDown, HelpCircle, HardDrive, BellRing, Settings 
+import {
+  Plus, Smile, Send, Search, Video, Phone, Info, Hash, MessagesSquare, Users,
+  ChevronRight, ArrowDown, HelpCircle, HardDrive, BellRing, Settings
 } from 'lucide-react';
 
 export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
@@ -53,7 +53,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
     const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const messagePayload = {
-      room: roomId, 
+      room: roomId,
       sender: userName,
       text: inputText.trim(),
       time: timeString,
@@ -84,7 +84,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   // Safely guard empty or undefined arrays before executing prototype mutations
   const safeMessages = Array.isArray(messages) ? messages : [];
 
-  const filteredMessages = safeMessages.filter(msg => 
+  const filteredMessages = safeMessages.filter(msg =>
     msg && msg.text && msg.text.toLowerCase().includes((searchQuery || '').toLowerCase())
   );
 
@@ -92,7 +92,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-900 overflow-hidden relative selection:bg-indigo-600 selection:text-white">
-      
+
       {/* Sidebar shell embedded inside main workspace */}
       <aside className="hidden lg:flex flex-col h-full w-[280px] bg-slate-50 border-r border-slate-200 shrink-0 select-none">
         {/* Sidebar Header: Room Identity and Code */}
@@ -114,52 +114,47 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
             <span className="px-2 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
               Navigation
             </span>
-            
+
             <div className="space-y-1.5 pt-2">
               <button
                 type="button"
                 onClick={() => setActiveTab('messages')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 transition-all text-sm rounded-lg cursor-pointer ${
-                  activeTab === 'messages' 
-                    ? 'bg-indigo-50/70 text-indigo-700 font-bold' 
+                className={`w-full flex items-center justify-between px-3 py-2.5 transition-all text-sm rounded-lg cursor-pointer ${activeTab === 'messages'
+                    ? 'bg-indigo-50/70 text-indigo-700 font-bold'
                     : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 font-medium'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <MessagesSquare className="w-4 h-4 stroke-[2]" />
                   <span>Direct Messages</span>
                 </div>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                  activeTab === 'messages' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600'
-                }`}>1</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${activeTab === 'messages' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600'
+                  }`}>1</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('channels')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 transition-all text-sm rounded-lg cursor-pointer ${
-                  activeTab === 'channels' 
-                    ? 'bg-indigo-100/70 text-indigo-700 font-bold' 
+                className={`w-full flex items-center justify-between px-3 py-2.5 transition-all text-sm rounded-lg cursor-pointer ${activeTab === 'channels'
+                    ? 'bg-indigo-100/70 text-indigo-700 font-bold'
                     : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 font-medium'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <Hash className="w-4 h-4 stroke-[2]" />
                   <span>Channels</span>
                 </div>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
-                  activeTab === 'channels' ? 'bg-indigo-100/80 text-indigo-800' : 'bg-slate-200 text-slate-650'
-                }`}>ACTIVE</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${activeTab === 'channels' ? 'bg-indigo-100/80 text-indigo-800' : 'bg-slate-200 text-slate-650'
+                  }`}>ACTIVE</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('contacts')}
-                className={`w-full flex items-center gap-2 px-3 py-2.5 transition-all text-sm rounded-lg cursor-pointer ${
-                  activeTab === 'contacts' 
-                    ? 'bg-indigo-100/70 text-indigo-700 font-bold' 
+                className={`w-full flex items-center gap-2 px-3 py-2.5 transition-all text-sm rounded-lg cursor-pointer ${activeTab === 'contacts'
+                    ? 'bg-indigo-100/70 text-indigo-700 font-bold'
                     : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 font-medium'
-                }`}
+                  }`}
               >
                 <Users className="w-4 h-4 stroke-[2]" />
                 <span>Contacts</span>
@@ -229,8 +224,8 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
             {/* Inline Search Input */}
             <div className="hidden md:flex items-center gap-2 bg-slate-50 px-3 py-1.5 border border-slate-200/80 rounded-lg">
               <Search className="w-3.5 h-3.5 text-slate-400" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Search conversation..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -240,7 +235,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
             {/* Quick Actions */}
             <div className="flex items-center gap-4 text-slate-400">
-              <button 
+              <button
                 type="button"
                 className={`p-1 transition-colors cursor-pointer ${showInfoSidebar ? 'text-indigo-600' : 'hover:text-slate-600'}`}
                 title="Toggle System Info panel"
@@ -278,8 +273,8 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
           <div className="flex-col flex gap-5">
             {filteredMessages.length > 0 ? (
               filteredMessages.map((msg) => (
-                <div 
-                  key={msg.id} 
+                <div
+                  key={msg.id}
                   className={`flex flex-col gap-1.5 max-w-[75%] ${msg.isMe ? 'ml-auto items-end' : 'items-start'}`}
                 >
                   <div className="flex items-center gap-2 select-none">
@@ -292,12 +287,11 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
                     )}
                   </div>
 
-                  <div 
-                    className={`p-4 text-sm leading-relaxed font-sans shadow-sm ${
-                      msg.isMe 
-                        ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none' 
+                  <div
+                    className={`p-4 text-sm leading-relaxed font-sans shadow-sm ${msg.isMe
+                        ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none'
                         : 'bg-slate-100 text-slate-800 rounded-2xl rounded-tl-none'
-                    }`}
+                      }`}
                   >
                     <p className="whitespace-pre-line">{msg.text}</p>
                   </div>
@@ -317,9 +311,9 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
         <footer className="p-6 bg-white border-t border-slate-100 relative">
           <form onSubmit={handleSendMessage} className="relative">
             <div className="flex items-center gap-3 bg-white border-2 border-slate-200 rounded-xl p-3.5 shadow-sm focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-100 transition-all group">
-              
-              <input 
-                type="text" 
+
+              <input
+                type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Type a message to General Channel..."
@@ -328,7 +322,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
               />
 
               <div className="flex items-center gap-3 relative text-slate-400">
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className={`p-1 hover:text-slate-600 transition-colors cursor-pointer ${showEmojiPicker ? 'text-indigo-600' : 'text-slate-400'}`}
@@ -339,7 +333,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
                 <AnimatePresence>
                   {showEmojiPicker && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
@@ -361,14 +355,13 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
                 <div className="h-5 w-[1px] bg-slate-200"></div>
 
-                <button 
+                <button
                   type="submit"
                   disabled={!inputText.trim()}
-                  className={`p-2 transition-all flex items-center justify-center rounded-lg ${
-                    inputText.trim() 
-                      ? 'bg-indigo-600 text-white shadow shadow-indigo-150 scale-100 hover:bg-indigo-700 active:scale-95 cursor-pointer' 
+                  className={`p-2 transition-all flex items-center justify-center rounded-lg ${inputText.trim()
+                      ? 'bg-indigo-600 text-white shadow shadow-indigo-150 scale-100 hover:bg-indigo-700 active:scale-95 cursor-pointer'
                       : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                  }`}
+                    }`}
                   title="Deliver message transmission"
                 >
                   <Send className="w-3.5 h-3.5 fill-current stroke-none" />
@@ -393,7 +386,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
               <div className="space-y-6">
                 <div className="flex justify-between items-center pb-3 border-b border-slate-200">
                   <span className="text-[10px] font-bold text-slate-500 tracking-wider">SYSTEM INFO PANEL</span>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowInfoSidebar(false)}
                     className="text-xs font-bold font-mono hover:text-slate-800 text-slate-400 transition-colors cursor-pointer"
