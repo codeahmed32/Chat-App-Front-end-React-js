@@ -4,9 +4,10 @@ import AuthScreen from './components/AuthScreen.jsx';
 import ChatScreen from './components/ChatScreen.jsx';
 import { io } from 'socket.io-client';
 
-const socket = io('https://chatapp-backend-production-503e.up.railway.app', {
-  transports: ['websocket'],
-  autoConnect: true
+
+const socket = io("https://chatapp-backend-production-5dd7.up.railway.app/", {
+  transports: ["polling", "websocket"], 
+  withCredentials: true
 });
 // https://chatapp-backend-production-503e.up.railway.app
 
