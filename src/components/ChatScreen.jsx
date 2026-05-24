@@ -107,30 +107,30 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
     setShowEmojiPicker(false);
   };
 
-  const handleContextMenu = (e, msg) => {
-    if (!msg.isMe) return;
-    e.preventDefault();
-    
-    // Responsive dynamic positions mapping
-    const menuWidth = 145; 
-    const menuHeight = 90;
-    let x = e.clientX;
-    let y = e.clientY;
+ const handleContextMenu = (e, msg) => {
+  if (!msg.isMe) return;
+  e.preventDefault();
+  e.stopPropagation(); // Yeh line add ki hai
 
-    if (x + menuWidth > window.innerWidth) {
-      x = window.innerWidth - menuWidth - 10;
-    }
-    if (y + menuHeight > window.innerHeight) {
-      y = window.innerHeight - menuHeight - 10;
-    }
+  const menuWidth = 145; 
+  const menuHeight = 90;
+  let x = e.clientX;
+  let y = e.clientY;
 
-    setContextMenu({
-      mouseX: x,
-      mouseY: y,
-      messageId: msg.id,
-      currentText: msg.text
-    });
-  };
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 10;
+  }
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 10;
+  }
+
+  setContextMenu({
+    mouseX: x,
+    mouseY: y,
+    messageId: msg.id,
+    currentText: msg.text
+  });
+};
 
   const triggerEditMode = () => {
     if (!contextMenu) return;
@@ -516,35 +516,43 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {contextMenu && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.1 }}
-            style={{ top: contextMenu.mouseY, left: contextMenu.mouseX }}
-            className="fixed z-50 min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-xl p-1.5 flex flex-col select-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={triggerEditMode}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
-            >
-              <Edit2 className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Edit Message</span>
-            </button>
-            <div className="h-[1px] bg-slate-100 my-1" />
-            <button
-              onClick={handleDeleteMessage}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Delete Message</span>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+<AnimatePresence>
+  {contextMenu && (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.1 }}
+      style={{ top: contextMenu.mouseY, left: contextMenu.mouseX }}
+      className="fixed z-50 min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-xl p-1.5 flex flex-col select-none"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          triggerEditMode();
+        }}
+        className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+      >
+        <Edit2 className="w-3.5 h-3.5 stroke-[2.5]" />
+        <span>Edit Message</span>
+      </button>
+      
+      <div className="h-[1px] bg-slate-100 my-1" />
+      
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDeleteMessage();
+        }}
+        className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+      >
+        <Trash2 className="w-3.5 h-3.5 stroke-[2.5]" />
+        <span>Delete Message</span>
+      </button>
+    </motion.div>
+  )}
+</AnimatePresence>
     </div>
   );
 }
