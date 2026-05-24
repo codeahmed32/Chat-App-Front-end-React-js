@@ -9,20 +9,19 @@ export default function App() {
   const [socket, setSocket] = useState(null);
 
   // 1. Socket Initialize sirf aik baar hoga jab App mount hogi
-  useEffect(() => {
-    const newSocket = io("https://chatapp-backend-production-5dd7.up.railway.app", {
-      transports: ["websocket", "polling"], // Websocket ko priority do
-      withCredentials: true,
-      autoConnect: true // Explicitly true rakhein
-    });
+useEffect(() => {
+  const newSocket = io("https://chatapp-backend-production-5dd7.up.railway.app", {
+    transports: ["polling", "websocket"], // Polling ko pehle rakho live server ke liye
+    withCredentials: true,
+    autoConnect: true
+  });
 
-    setSocket(newSocket);
+  setSocket(newSocket);
 
-    // Cleanup function: Jab user browser tab band kare to connection clean ho
-    return () => {
-      newSocket.close();
-    };
-  }, []);
+  return () => {
+    newSocket.close();
+  };
+}, []);
 
   const handleEnterChat = (userInfo) => {
     setCurrentUser(userInfo);
