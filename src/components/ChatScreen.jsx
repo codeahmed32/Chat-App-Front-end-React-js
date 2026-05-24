@@ -27,22 +27,30 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   useEffect(() => {
     if (!socket) return;
 
+    // Direct registration for message handling
     socket.on('message', (incomingMessage) => {
       if (!incomingMessage) return;
       
-      // FIX: Check mapped payload variables (senderName instead of sender)
-      if (incomingMessage.senderName !== userName) {
-        setMessages((prev) => [...prev, {
-          id: incomingMessage.id || Date.now(),
-          sender: incomingMessage.senderName, // Map backend 'senderName'
-          text: incomingMessage.message,       // Map backend 'message'
-          time: incomingMessage.time || incomingMessage.timeStamp, 
-          isMe: false
-        }]);
-      }
+      const isMe = incomingMessage.senderName === userName;
+
+      // Filter state updates properly to avoid duplicate object injections
+      setMessages((prev) => {
+        // Stop accumulation if duplicate id or exact payload match exists
+        const exists = prev.some(msg => msg.timeRaw === incomingMessage.timeStamp && msg.text === incomingMessage.message);
+        if (exists) return prev;
+
+        return [...prev, {
+          id: incomingMessage.id || Date.now() + Math.random(),
+          sender: incomingMessage.senderName, 
+          text: incomingMessage.message,       
+          time: incomingMessage.timeStamp ? new Date(incomingMessage.timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
+          timeRaw: incomingMessage.timeStamp,
+          isMe: isMe
+        }];
+      });
     });
 
-    // Handle historic chat load upon validation parameters
+    // Handle historic chat load from MongoDB/Redis pipeline
     socket.on('chat_history', (history) => {
       if (Array.isArray(history)) {
         const mappedHistory = history.map((msg) => ({
@@ -50,6 +58,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
           sender: msg.senderName,
           text: msg.message,
           time: msg.timeStamp ? new Date(msg.timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+          timeRaw: msg.timeStamp,
           isMe: msg.senderName === userName
         }));
         setMessages(mappedHistory);
@@ -66,26 +75,14 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
     if (e) e.preventDefault();
     if (!inputText.trim() || !socket) return;
 
-    const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    // FIX: Match exact payload requested by back-end endpoints
     const messagePayload = {
-      room: roomId,
-      senderName: userName, // Changed from sender to senderName
-      message: inputText.trim() // Changed from text to message
+      room: String(roomId).trim(),
+      senderName: userName, 
+      message: inputText.trim() 
     };
 
-    // 1. Emit to socket backend
+    // Emit statement targeting backend socket endpoints
     socket.emit('send', messagePayload);
-
-    // 2. Update local state instantly for current user
-    setMessages((prev) => [...prev, {
-      id: Date.now(),
-      sender: userName,
-      text: inputText.trim(),
-      time: timeString,
-      isMe: true
-    }]);
 
     setInputText('');
     setShowEmojiPicker(false);
@@ -96,7 +93,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
     setShowEmojiPicker(false);
   };
 
-  // Safely guard empty or undefined arrays before executing prototype mutations
   const safeMessages = Array.isArray(messages) ? messages : [];
 
   const filteredMessages = safeMessages.filter(msg =>
@@ -110,7 +106,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
       {/* Sidebar shell embedded inside main workspace */}
       <aside className="hidden lg:flex flex-col h-full w-[280px] bg-slate-50 border-r border-slate-200 shrink-0 select-none">
-        {/* Sidebar Header: Room Identity and Code */}
         <div className="p-6 flex flex-col gap-2 border-b border-slate-200">
           <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase tracking-wider font-bold">
             <span>ROOM IDENTITY</span>
@@ -123,7 +118,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
           </div>
         </div>
 
-        {/* Navigation lists */}
         <nav className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-6">
           <div className="space-y-1">
             <span className="px-2 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
@@ -177,7 +171,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
             </div>
           </div>
 
-          {/* Connected users section */}
           <div className="space-y-1.5">
             <span className="px-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider flex justify-between items-center">
               <span>ACTIVE USERS</span>
@@ -205,7 +198,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
           </div>
         </nav>
 
-        {/* Sidebar bottom container */}
         <div className="p-4 border-t border-slate-200 bg-slate-100/50">
           <button
             type="button"
@@ -219,7 +211,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
       {/* Main Workspace Frame */}
       <section className="flex-1 flex flex-col h-full bg-white relative">
-        {/* Top bar header */}
         <header className="flex justify-between items-center h-[64px] px-6 w-full border-b border-slate-200 bg-white sticky top-0 z-40 select-none">
           <div className="flex items-center gap-3">
             <div className="bg-indigo-50 p-2 text-indigo-600 rounded-lg">
@@ -236,7 +227,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
           </div>
 
           <div className="flex items-center gap-6">
-            {/* Inline Search Input */}
             <div className="hidden md:flex items-center gap-2 bg-slate-50 px-3 py-1.5 border border-slate-200/80 rounded-lg">
               <Search className="w-3.5 h-3.5 text-slate-400" />
               <input
@@ -248,7 +238,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
               />
             </div>
 
-            {/* Quick Actions */}
             <div className="flex items-center gap-4 text-slate-400">
               <button
                 type="button"
@@ -262,7 +251,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
           </div>
         </header>
 
-        {/* Message Work area */}
         <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
           {searchQuery === '' && (
             <div className="border border-slate-200 border-dashed p-6 bg-indigo-50/20 mb-2 select-none rounded-xl">
@@ -275,7 +263,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
             </div>
           )}
 
-          {/* Date Separator line */}
           <div className="flex items-center gap-4 w-full py-2 select-none">
             <div className="h-[1px] flex-1 bg-slate-200"></div>
             <span className="text-[10px] font-mono tracking-[0.2em] uppercase font-bold text-slate-400">
@@ -284,7 +271,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
             <div className="h-[1px] flex-1 bg-slate-200"></div>
           </div>
 
-          {/* Iterating Chat Messages */}
           <div className="flex-col flex gap-5">
             {filteredMessages.length > 0 ? (
               filteredMessages.map((msg) => (
@@ -322,7 +308,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Chat input box trigger */}
         <footer className="p-6 bg-white border-t border-slate-100 relative">
           <form onSubmit={handleSendMessage} className="relative">
             <div className="flex items-center gap-3 bg-white border-2 border-slate-200 rounded-xl p-3.5 shadow-sm focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-100 transition-all group">
