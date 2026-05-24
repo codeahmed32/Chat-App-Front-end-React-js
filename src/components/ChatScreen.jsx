@@ -110,7 +110,9 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   const handleContextMenu = (e, msg) => {
     if (!msg.isMe) return;
     e.preventDefault();
-    e.stopPropagation(); // Yeh line add ki hai
+    e.stopPropagation();
+
+    console.log("Right Clicked Message Object:", msg); // Log 1: Check karo msg.id kya aa rahi hai
 
     const menuWidth = 145;
     const menuHeight = 90;
@@ -131,7 +133,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
       currentText: msg.text
     });
   };
-
   const triggerEditMode = () => {
     if (!contextMenu) return;
     setEditingMessageId(contextMenu.messageId);
@@ -154,7 +155,16 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   };
 
   const handleDeleteMessage = () => {
-    if (!contextMenu || !socket) return;
+    if (!contextMenu || !socket) {
+      console.error("Delete cancel: contextMenu or socket missing", { contextMenu, socket });
+      return;
+    }
+
+    console.log("Emitting delete_message with payload:", {
+      room: String(roomId).trim(),
+      messageId: contextMenu.messageId
+    });
+
     socket.emit('delete_message', {
       room: String(roomId).trim(),
       messageId: contextMenu.messageId
