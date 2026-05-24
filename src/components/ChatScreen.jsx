@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Smile, Send, Search, Video, Phone, Info, Hash, MessagesSquare, Users,
-  ChevronRight, ArrowDown, HelpCircle, HardDrive, BellRing, Settings
+  ChevronRight, ArrowDown, HelpCircle, HardDrive, BellRing, Settings, Edit2, Trash2
 } from 'lucide-react';
 
 export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
@@ -12,6 +12,10 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   const [inputText, setInputText] = useState('');
   const [showInfoSidebar, setShowInfoSidebar] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const [contextMenu, setContextMenu] = useState(null);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editInputText, setEditInputText] = useState('');
 
   const messagesEndRef = useRef(null);
 
@@ -23,34 +27,30 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
     scrollToBottom();
   }, [messages]);
 
-  // Handle incoming messages from socket backend
   useEffect(() => {
     if (!socket) return;
 
-    // Direct registration for message handling
     socket.on('message', (incomingMessage) => {
       if (!incomingMessage) return;
       
       const isMe = incomingMessage.senderName === userName;
 
-      // Filter state updates properly to avoid duplicate object injections
       setMessages((prev) => {
-        // Stop accumulation if duplicate id or exact payload match exists
-        const exists = prev.some(msg => msg.timeRaw === incomingMessage.timeStamp && msg.text === incomingMessage.message);
+        const exists = prev.some(msg => msg.id === incomingMessage._id || (msg.timeRaw === incomingMessage.timeStamp && msg.text === incomingMessage.message));
         if (exists) return prev;
 
         return [...prev, {
-          id: incomingMessage.id || Date.now() + Math.random(),
+          id: incomingMessage._id || Date.now() + Math.random(),
           sender: incomingMessage.senderName, 
           text: incomingMessage.message,       
           time: incomingMessage.timeStamp ? new Date(incomingMessage.timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
           timeRaw: incomingMessage.timeStamp,
-          isMe: isMe
+          isMe: isMe,
+          isEdited: incomingMessage.isEdited || false
         }];
       });
     });
 
-    // Handle historic chat load from MongoDB/Redis pipeline
     socket.on('chat_history', (history) => {
       if (Array.isArray(history)) {
         const mappedHistory = history.map((msg) => ({
@@ -59,17 +59,38 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
           text: msg.message,
           time: msg.timeStamp ? new Date(msg.timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
           timeRaw: msg.timeStamp,
-          isMe: msg.senderName === userName
+          isMe: msg.senderName === userName,
+          isEdited: msg.isEdited || false
         }));
         setMessages(mappedHistory);
       }
     });
 
+    socket.on('message_edited', ({ messageId, message }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, text: message, isEdited: true } : msg
+        )
+      );
+    });
+
+    socket.on('message_deleted', ({ messageId }) => {
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    });
+
     return () => {
       socket.off('message');
       socket.off('chat_history');
+      socket.off('message_edited');
+      socket.off('message_deleted');
     };
   }, [socket, userName]);
+
+  useEffect(() => {
+    const handleCloseContextMenu = () => setContextMenu(null);
+    window.addEventListener('click', handleCloseContextMenu);
+    return () => window.removeEventListener('click', handleCloseContextMenu);
+  }, []);
 
   const handleSendMessage = (e) => {
     if (e) e.preventDefault();
@@ -81,11 +102,50 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
       message: inputText.trim() 
     };
 
-    // Emit statement targeting backend socket endpoints
     socket.emit('send', messagePayload);
-
     setInputText('');
     setShowEmojiPicker(false);
+  };
+
+  const handleContextMenu = (e, msg) => {
+    if (!msg.isMe) return;
+    e.preventDefault();
+    setContextMenu({
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      messageId: msg.id,
+      currentText: msg.text
+    });
+  };
+
+  const triggerEditMode = () => {
+    if (!contextMenu) return;
+    setEditingMessageId(contextMenu.messageId);
+    setEditInputText(contextMenu.currentText);
+    setContextMenu(null);
+  };
+
+  const handleSaveEdit = (e) => {
+    if (e) e.preventDefault();
+    if (!editInputText.trim() || !socket || !editingMessageId) return;
+
+    socket.emit('edit_message', {
+      room: String(roomId).trim(),
+      messageId: editingMessageId,
+      newMessage: editInputText.trim()
+    });
+
+    setEditingMessageId(null);
+    setEditInputText('');
+  };
+
+  const handleDeleteMessage = () => {
+    if (!contextMenu || !socket) return;
+    socket.emit('delete_message', {
+      room: String(roomId).trim(),
+      messageId: contextMenu.messageId
+    });
+    setContextMenu(null);
   };
 
   const addEmoji = (emoji) => {
@@ -104,7 +164,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-900 overflow-hidden relative selection:bg-indigo-600 selection:text-white">
 
-      {/* Sidebar shell embedded inside main workspace */}
       <aside className="hidden lg:flex flex-col h-full w-[280px] bg-slate-50 border-r border-slate-200 shrink-0 select-none">
         <div className="p-6 flex flex-col gap-2 border-b border-slate-200">
           <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase tracking-wider font-bold">
@@ -166,7 +225,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
                   }`}
               >
                 <Users className="w-4 h-4 stroke-[2]" />
-                <span>Contacts</span>
+                <span>Nav Contacts</span>
               </button>
             </div>
           </div>
@@ -209,7 +268,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
         </div>
       </aside>
 
-      {/* Main Workspace Frame */}
       <section className="flex-1 flex flex-col h-full bg-white relative">
         <header className="flex justify-between items-center h-[64px] px-6 w-full border-b border-slate-200 bg-white sticky top-0 z-40 select-none">
           <div className="flex items-center gap-3">
@@ -282,20 +340,41 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
                     {!msg.isMe && (
                       <span className="text-xs text-slate-800 font-bold">{msg.sender}</span>
                     )}
-                    <span className="text-[10px] text-slate-400 font-medium font-mono">{msg.time}</span>
+                    <span className="text-[10px] text-slate-400 font-medium font-mono">
+                      {msg.time} {msg.isEdited && <span className="text-slate-400/80 italic font-sans font-normal ml-1">(edited)</span>}
+                    </span>
                     {msg.isMe && (
                       <span className="text-xs text-slate-800 font-bold">{msg.sender}</span>
                     )}
                   </div>
 
-                  <div
-                    className={`p-4 text-sm leading-relaxed font-sans shadow-sm ${msg.isMe
-                        ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none'
-                        : 'bg-slate-100 text-slate-800 rounded-2xl rounded-tl-none'
-                      }`}
-                  >
-                    <p className="whitespace-pre-line">{msg.text}</p>
-                  </div>
+                  {editingMessageId === msg.id ? (
+                    <form onSubmit={handleSaveEdit} className="flex items-center gap-2 w-full max-w-md bg-slate-100 p-1.5 rounded-xl border border-slate-300">
+                      <input
+                        type="text"
+                        value={editInputText}
+                        onChange={(e) => setEditInputText(e.target.value)}
+                        className="flex-1 bg-transparent px-3 py-1 text-sm text-slate-800 outline-none border-none focus:ring-0"
+                        autoFocus
+                      />
+                      <button type="submit" className="px-3 py-1 bg-indigo-600 text-white font-medium text-xs rounded-lg hover:bg-indigo-700 transition-colors">
+                        Save
+                      </button>
+                      <button type="button" onClick={() => setEditingMessageId(null)} className="px-3 py-1 bg-slate-200 text-slate-600 font-medium text-xs rounded-lg hover:bg-slate-300 transition-colors">
+                        Cancel
+                      </button>
+                    </form>
+                  ) : (
+                    <div
+                      onContextMenu={(e) => handleContextMenu(e, msg)}
+                      className={`p-4 text-sm leading-relaxed font-sans shadow-sm transition-all duration-150 relative group select-text ${msg.isMe
+                          ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none hover:bg-indigo-700 cursor-context-menu'
+                          : 'bg-slate-100 text-slate-800 rounded-2xl rounded-tl-none'
+                        }`}
+                    >
+                      <p className="whitespace-pre-line">{msg.text}</p>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -372,7 +451,6 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
         </footer>
       </section>
 
-      {/* Right Drawer Info Panel Sidebar */}
       <AnimatePresence>
         {showInfoSidebar && (
           <motion.aside
@@ -421,6 +499,36 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
               </div>
             </div>
           </motion.aside>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.1 }}
+            style={{ top: contextMenu.mouseY, left: contextMenu.mouseX }}
+            className="fixed z-50 min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-xl p-1.5 flex flex-col select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={triggerEditMode}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+            >
+              <Edit2 className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Edit Message</span>
+            </button>
+            <div className="h-[1px] bg-slate-100 my-1" />
+            <button
+              onClick={handleDeleteMessage}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Delete Message</span>
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

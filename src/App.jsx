@@ -1,35 +1,36 @@
+// https://chatapp-backend-production-5dd7.up.railway.app
+
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import AuthScreen from './components/AuthScreen.jsx';
 import ChatScreen from './components/ChatScreen.jsx';
 import { io } from 'socket.io-client';
 
+const BACKEND_URL = "https://chatapp-backend-production-5dd7.up.railway.app"; // Apni live backend URL yahan dalo
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [socket, setSocket] = useState(null);
 
-  // 1. Socket Initialize sirf aik baar hoga jab App mount hogi
-useEffect(() => {
-  const newSocket = io("https://chatapp-backend-production-5dd7.up.railway.app", {
-    transports: ["polling", "websocket"], // Polling ko pehle rakho live server ke liye
-    withCredentials: true,
-    autoConnect: true
-  });
+  useEffect(() => {
+    const newSocket = io(BACKEND_URL, {
+      transports: ["polling", "websocket"],
+      withCredentials: true
+    });
 
-  setSocket(newSocket);
+    setSocket(newSocket);
 
-  return () => {
-    newSocket.close();
-  };
-}, []);
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
 
   const handleEnterChat = (userInfo) => {
     setCurrentUser(userInfo);
-    
-    // Safety check ke socket active hai ya nahi
+
     if (socket) {
       socket.emit('join', {
-        roomId: String(userInfo.roomId).trim(), // Trim lagao takay room match ho
+        roomId: String(userInfo.roomId).trim(),
         userName: String(userInfo.name).trim()
       });
     }
@@ -42,9 +43,12 @@ useEffect(() => {
     setCurrentUser(null);
   };
 
-  // Jab tak socket ready na ho, loading state handle karo ya empty div do
   if (!socket) {
-    return <div className="min-h-screen bg-slate-50 flex items-center justify-center">Connecting to server...</div>;
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center font-mono text-xs text-slate-500 uppercase tracking-widest">
+        Connecting to server...
+      </div>
+    );
   }
 
   return (
@@ -72,7 +76,7 @@ useEffect(() => {
               userName={currentUser.name}
               roomId={currentUser.roomId}
               onLeaveRoom={handleLeaveRoom}
-              socket={socket} // Sahi tracked socket pass ho raha hai
+              socket={socket}
             />
           </motion.div>
         )}
