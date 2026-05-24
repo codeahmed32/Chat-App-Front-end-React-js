@@ -134,9 +134,7 @@ export default function AuthScreen({ onEnterChat, loading = false, statusText = 
 
         <div className="mt-8 text-center flex items-center justify-center gap-2">
           <Lock className="w-3.5 h-3.5 text-slate-400 stroke-[1.5]" />
-          <span className="text-[10px] font-bold text-slate-400 tracking-[0.25em] uppercase font-sans">
-            Secure End-to-End Encryption Protocol
-          </span>
+
         </div>
       </motion.main>
     </div>
