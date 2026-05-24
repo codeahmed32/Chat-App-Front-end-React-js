@@ -86,6 +86,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
     };
   }, [socket, userName]);
 
+  // Window click optimization to close context menu safely
   useEffect(() => {
     const handleCloseContextMenu = () => setContextMenu(null);
     window.addEventListener('click', handleCloseContextMenu);
@@ -108,16 +109,20 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   };
 
   const handleContextMenu = (e, msg) => {
-    if (!msg.isMe) return;
     e.preventDefault();
-    e.stopPropagation();
+    e.stopPropagation(); 
 
-    console.log("Right Clicked Message Object:", msg); // Log 1: Check karo msg.id kya aa rahi hai
+    if (!msg.isMe) return;
 
     const menuWidth = 145;
     const menuHeight = 90;
     let x = e.clientX;
     let y = e.clientY;
+
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      x = e.changedTouches[0].clientX;
+      y = e.changedTouches[0].clientY;
+    }
 
     if (x + menuWidth > window.innerWidth) {
       x = window.innerWidth - menuWidth - 10;
@@ -133,6 +138,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
       currentText: msg.text
     });
   };
+
   const triggerEditMode = () => {
     if (!contextMenu) return;
     setEditingMessageId(contextMenu.messageId);
@@ -155,15 +161,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   };
 
   const handleDeleteMessage = () => {
-    if (!contextMenu || !socket) {
-      console.error("Delete cancel: contextMenu or socket missing", { contextMenu, socket });
-      return;
-    }
-
-    console.log("Emitting delete_message with payload:", {
-      room: String(roomId).trim(),
-      messageId: contextMenu.messageId
-    });
+    if (!contextMenu || !socket) return;
 
     socket.emit('delete_message', {
       room: String(roomId).trim(),
@@ -535,9 +533,11 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
             transition={{ duration: 0.1 }}
             style={{ top: contextMenu.mouseY, left: contextMenu.mouseX }}
             className="fixed z-50 min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-xl p-1.5 flex flex-col select-none"
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
             <button
+              type="button"
               onMouseDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -552,6 +552,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
             <div className="h-[1px] bg-slate-100 my-1" />
 
             <button
+              type="button"
               onMouseDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
