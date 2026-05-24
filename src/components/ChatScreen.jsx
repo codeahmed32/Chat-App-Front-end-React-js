@@ -110,9 +110,23 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   const handleContextMenu = (e, msg) => {
     if (!msg.isMe) return;
     e.preventDefault();
+    
+    // Responsive dynamic positions mapping
+    const menuWidth = 145; 
+    const menuHeight = 90;
+    let x = e.clientX;
+    let y = e.clientY;
+
+    if (x + menuWidth > window.innerWidth) {
+      x = window.innerWidth - menuWidth - 10;
+    }
+    if (y + menuHeight > window.innerHeight) {
+      y = window.innerHeight - menuHeight - 10;
+    }
+
     setContextMenu({
-      mouseX: e.clientX,
-      mouseY: e.clientY,
+      mouseX: x,
+      mouseY: y,
       messageId: msg.id,
       currentText: msg.text
     });

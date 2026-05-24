@@ -1,12 +1,10 @@
-// https://chatapp-backend-production-5dd7.up.railway.app
-
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import AuthScreen from './components/AuthScreen.jsx';
 import ChatScreen from './components/ChatScreen.jsx';
 import { io } from 'socket.io-client';
 
-const BACKEND_URL = "https://chatapp-backend-production-5dd7.up.railway.app"; // Apni live backend URL yahan dalo
+const BACKEND_URL = "https://chatapp-backend-production-5dd7.up.railway.app";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
