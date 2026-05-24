@@ -45,11 +45,11 @@ export default function AuthScreen({ onEnterChat, loading = false, statusText = 
               <MessageSquare className="text-white w-5 h-5 stroke-[2]" />
             </div>
             <span className="text-2xl font-bold text-slate-900 tracking-tight font-sans">
-              ConnectFlow
+              ChatRoom
             </span>
           </motion.div>
           <p className="text-xs text-slate-500 tracking-wide font-medium">
-            Architecture for focused team communication.
+            Connect With Your Buddies...
           </p>
         </div>
 
