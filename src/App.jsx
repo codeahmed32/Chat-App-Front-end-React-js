@@ -1,49 +1,52 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AuthScreen from './components/AuthScreen.jsx';
 import ChatScreen from './components/ChatScreen.jsx';
 import { io } from 'socket.io-client';
 
-// Dynamic Backend URL Handler
+// Strictly Environment Variable Driven URL Parser
 const getBackendUrl = () => {
-  if (import.meta.env.VITE_BACKEND_URL) {
-    return import.meta.env.VITE_BACKEND_URL.replace(/\/+$/, "");
+  const envUrl = import.meta.env.VITE_BACKEND_URL;
+  if (!envUrl) {
+    console.warn("VITE_BACKEND_URL environment variable missing!");
+    return "";
   }
-  const isLocal = Boolean(
-    window.location.hostname === "localhost" || 
-    window.location.hostname === "127.0.0.1"
-  );
-  return isLocal 
-    ? "http://localhost:5050";
+  return envUrl.replace(/\/+$/, "");
 };
 
 const BACKEND_URL = getBackendUrl();
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    // Session state persistent storage on reload
     const savedUser = sessionStorage.getItem("chat_user");
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  
+  const userRef = useRef(currentUser);
+  useEffect(() => {
+    userRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
+    if (!BACKEND_URL) return;
+
     const newSocket = io(BACKEND_URL, {
-      transports: ["polling", "websocket"],
+      transports: ["websocket", "polling"],
       withCredentials: true,
       autoConnect: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000
     });
 
     newSocket.on("connect", () => {
       setIsConnected(true);
-      // Auto-rejoin room on connection recovery
-      if (currentUser) {
+      if (userRef.current) {
         newSocket.emit('join', {
-          roomId: String(currentUser.roomId).trim(),
-          userName: String(currentUser.name).trim()
+          roomId: String(userRef.current.roomId).trim(),
+          userName: String(userRef.current.name).trim()
         });
       }
     });
