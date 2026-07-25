@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Smile, Send, Search, Info, Hash, Edit2, Trash2
 } from 'lucide-react';
@@ -30,41 +30,58 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('message', (incomingMessage) => {
+    const handleIncomingMessage = (incomingMessage) => {
       if (!incomingMessage) return;
 
-      const isMe = incomingMessage.senderName === userName;
+      const sender = incomingMessage.senderName || incomingMessage.sender;
+      const isMe = String(sender).trim() === String(userName).trim();
 
       setMessages((prev) => {
-        const exists = prev.some(msg => msg.id === incomingMessage._id || (msg.timeRaw === incomingMessage.timeStamp && msg.text === incomingMessage.message));
-        if (exists) return prev;
+        // Prevent duplicate append
+        const exists = prev.some(
+          msg => (incomingMessage._id && msg.id === incomingMessage._id) || 
+                 (msg.tempId && msg.tempId === incomingMessage.tempId)
+        );
+        
+        if (exists) {
+          return prev.map(msg => 
+            (msg.tempId && msg.tempId === incomingMessage.tempId)
+              ? { ...msg, id: incomingMessage._id || msg.id, tempId: undefined }
+              : msg
+          );
+        }
 
         return [...prev, {
           id: incomingMessage._id || Date.now() + Math.random(),
-          sender: incomingMessage.senderName,
-          text: incomingMessage.message,
-          time: incomingMessage.timeStamp ? new Date(incomingMessage.timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          timeRaw: incomingMessage.timeStamp,
+          sender: sender,
+          text: incomingMessage.message || incomingMessage.text,
+          time: incomingMessage.timeStamp 
+            ? new Date(incomingMessage.timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timeRaw: incomingMessage.timeStamp || Date.now(),
           isMe: isMe,
           isEdited: incomingMessage.isEdited || false
         }];
       });
-    });
+    };
 
-    socket.on('chat_history', (history) => {
+    const handleChatHistory = (history) => {
       if (Array.isArray(history)) {
         const mappedHistory = history.map((msg) => ({
           id: msg._id || Math.random(),
-          sender: msg.senderName,
-          text: msg.message,
+          sender: msg.senderName || msg.sender,
+          text: msg.message || msg.text,
           time: msg.timeStamp ? new Date(msg.timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
           timeRaw: msg.timeStamp,
-          isMe: msg.senderName === userName,
+          isMe: String(msg.senderName || msg.sender).trim() === String(userName).trim(),
           isEdited: msg.isEdited || false
         }));
         setMessages(mappedHistory);
       }
-    });
+    };
+
+    socket.on('message', handleIncomingMessage);
+    socket.on('chat_history', handleChatHistory);
 
     socket.on('message_edited', ({ messageId, message }) => {
       setMessages((prev) =>
@@ -85,8 +102,8 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
     });
 
     return () => {
-      socket.off('message');
-      socket.off('chat_history');
+      socket.off('message', handleIncomingMessage);
+      socket.off('chat_history', handleChatHistory);
       socket.off('message_edited');
       socket.off('message_deleted');
       socket.off('room_users'); 
@@ -101,12 +118,32 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
 
   const handleSendMessage = (e) => {
     if (e) e.preventDefault();
-    if (!inputText.trim() || !socket) return;
+    const cleanText = inputText.trim();
+    if (!cleanText || !socket) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Optimistic local state update (Instantly show on screen)
+    const localMsgObj = {
+      id: tempId,
+      tempId: tempId,
+      sender: userName,
+      text: cleanText,
+      time: currentTime,
+      timeRaw: Date.now(),
+      isMe: true,
+      isEdited: false
+    };
+
+    setMessages((prev) => [...prev, localMsgObj]);
 
     const messagePayload = {
       room: String(roomId).trim(),
+      roomId: String(roomId).trim(),
       senderName: userName,
-      message: inputText.trim()
+      message: cleanText,
+      tempId: tempId
     };
 
     socket.emit('send', messagePayload);
@@ -420,7 +457,7 @@ export default function ChatScreen({ userName, roomId, onLeaveRoom, socket }) {
                   <div className="space-y-1">
                     <span className="text-[9px] font-bold text-slate-400 tracking-wider block">CONNECTION STATUS</span>
                     <span className="text-xs font-bold text-indigo-600 font-mono leading-relaxed lowercase">
-                      connected to railway live stream
+                      connected to live stream
                     </span>
                   </div>
                 </div>
